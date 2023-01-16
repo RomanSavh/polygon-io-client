@@ -67,11 +67,9 @@ impl WsCallback for PolygonWsClient {
     }
 
     async fn on_data(&self, connection: Arc<WsConnection>, data: Message) {
-        println!("data: {:?}", data);
         match data {
             Message::Text(msg) => {
                 let messages = WsDataEvent::serialize_chunk(&msg);
-
                 for message in messages{
                     match message {
                         Ok(event) => {
