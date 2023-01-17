@@ -11,7 +11,7 @@ pub enum WsDataEvent {
 }
 
 impl WsDataEvent {
-    pub fn serialize_chunk(data: &str) -> Vec<Result<Self, PolygonWsError>>{
+    pub fn serialize_chunk(data: &str) -> Vec<Result<Option<Self>, PolygonWsError>>{
         let mut result = vec![];
         let parse_result: Result<Vec<Value>, Error> = serde_json::from_str(data);
         
@@ -25,7 +25,7 @@ impl WsDataEvent {
         return result;
     }
 
-    fn serialize(data: Value) -> Result<Self, PolygonWsError> {
+    fn serialize(data: Value) -> Result<Option<Self>, PolygonWsError> {
         let parse_result: Result<serde_json::Value, Error> = serde_json::from_value(data.clone());
 
         if let Ok(parse_data) = parse_result {
@@ -37,24 +37,31 @@ impl WsDataEvent {
 
             let result = match evnt.unwrap(){
                 "Q" => {
+                    if parse_data["ap"].as_f64().is_none() || parse_data["bp"].as_f64().is_none(){
+                        return Ok(None);
+                    }
+
                     let message = serde_json::from_value::<StockQuoteTickMessage>(parse_data);
                     match message{
-                        Ok(message) => Ok(WsDataEvent::StockQuoteTick(message)),
-                        Err(_) => Err(PolygonWsError::SerializeError(data.to_string())),
+                        Ok(message) => Ok(Some(WsDataEvent::StockQuoteTick(message))),
+                        Err(err) => {
+                            println!("Error: {}", err);
+                            Err(PolygonWsError::SerializeError(data.to_string()))
+                        },
                     }
                     
                 },
                 "C" => {
                     let message = serde_json::from_value::<ForexQuoteTickMessage>(parse_data);
                     match message{
-                        Ok(message) => Ok(WsDataEvent::ForexQuoteTick(message)),
+                        Ok(message) => Ok(Some(WsDataEvent::ForexQuoteTick(message))),
                         Err(_) => Err(PolygonWsError::SerializeError(data.to_string())),
                     }
                 },
                 "status" => {
                     let message = serde_json::from_value::<StatusMessage>(parse_data);
                     match message{
-                        Ok(message) => Ok(WsDataEvent::Status(message)),
+                        Ok(message) => Ok(Some(WsDataEvent::Status(message))),
                         Err(_) => Err(PolygonWsError::SerializeError(data.to_string())),
                     }
                 },
@@ -105,21 +112,21 @@ pub struct StockQuoteTickMessage {
     #[serde(rename = "sym")]
     pub symbol: String,
     #[serde(rename = "bx")]
-    pub bid_exchange_id: u32,
+    pub bid_exchange_id: Option<u32>,
     #[serde(rename = "bp")]
     pub bid: f64,
     #[serde(rename = "bs")]
     pub bid_size: u64,
     #[serde(rename = "ax")]
-    pub ask_exchange_id: u32,
+    pub ask_exchange_id: Option<u32>,
     #[serde(rename = "ap")]
     pub ask: f64,
     #[serde(rename = "as")]
     pub ask_size: u64,
     #[serde(rename = "c")]
-    pub condition: u32,
+    pub condition: Option<u32>,
     #[serde(rename = "i")]
-    pub indicators: Vec<i32>,
+    pub indicators: Option<Vec<i32>>,
     #[serde(rename = "q")]
     pub sequance: u64,
     #[serde(rename = "z")]

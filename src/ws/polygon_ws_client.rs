@@ -73,7 +73,9 @@ impl WsCallback for PolygonWsClient {
                 for message in messages{
                     match message {
                         Ok(event) => {
-                            self.event_handler.on_data(event, &connection).await;
+                            if let Some(event) = event{
+                                self.event_handler.on_data(event, &connection).await;
+                            }
                         }
                         Err(err) => {
                             self.event_handler.on_error(err, &connection).await;
